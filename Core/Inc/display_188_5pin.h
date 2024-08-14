@@ -10,7 +10,7 @@
 
 #include "main.h"
 
-#define ECONOMY_CODE    // Choosing an alternative update function
+// #define ECONOMY_CODE    // Choosing an alternative update function
 // #define NO_LETTERS      // Do not use letters
 
 #define DISP188_TIMER TIM1 // Setup period 2 kHz
