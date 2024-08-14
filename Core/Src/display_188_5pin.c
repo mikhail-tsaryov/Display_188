@@ -1,0 +1,446 @@
+/*
+ * display_188_5pin.c
+ *
+ *  Created on: 15 aug 2024 г.
+ *      Author: Mikhail Tsaryov | EEP Lab
+ */
+#include "display_188_5pin.h"
+
+uint8_t stage = 0;
+uint8_t digits[10] = {SYMBOL_0, SYMBOL_1, SYMBOL_2, SYMBOL_3, SYMBOL_4, SYMBOL_5, SYMBOL_6, SYMBOL_7, SYMBOL_8, SYMBOL_9};
+
+static uint8_t Digit_1 = DIGIT_EMPTY;
+static uint8_t Digit_2 = DIGIT_EMPTY;
+static uint8_t Digit_3 = DIGIT_EMPTY;
+
+uint8_t ConvertDigit(uint8_t d)
+{
+  uint8_t res = DIGIT_EMPTY;
+  if ((d >= 0) && (d <= 9)) // 0..9
+    res = digits[d];
+  else
+    res = DIGIT_EMPTY;
+
+  return res;
+}
+
+uint8_t ConvertSymbol(char s)
+{
+  uint8_t res = SYMBOL_SPACE;
+
+       if (s =='0') res = SYMBOL_0;
+  else if (s =='1') res = SYMBOL_1;
+  else if (s =='2') res = SYMBOL_2;
+  else if (s =='3') res = SYMBOL_3;
+  else if (s =='4') res = SYMBOL_4;
+  else if (s =='5') res = SYMBOL_5;
+  else if (s =='6') res = SYMBOL_6;
+  else if (s =='7') res = SYMBOL_7;
+  else if (s =='8') res = SYMBOL_8;
+  else if (s =='9') res = SYMBOL_9;
+#ifndef NO_LETTERS
+  else if ((s =='A') || (s =='a')) res = SYMBOL_A;
+  else if ((s =='B') || (s =='b')) res = SYMBOL_B;
+  else if ((s =='C') || (s =='c')) res = SYMBOL_C;
+  else if ((s =='D') || (s =='d')) res = SYMBOL_D;
+  else if ((s =='E') || (s =='e')) res = SYMBOL_E;
+  else if ((s =='F') || (s =='f')) res = SYMBOL_F;
+  else if ((s =='H') || (s =='h')) res = SYMBOL_H;
+  else if ((s =='J') || (s =='j')) res = SYMBOL_J;
+  else if ((s =='L') || (s =='l')) res = SYMBOL_L;
+  else if ((s =='N') || (s =='n')) res = SYMBOL_N;
+  else if ((s =='O') || (s =='o')) res = SYMBOL_O;
+  else if ((s =='P') || (s =='p')) res = SYMBOL_P;
+  else if ((s =='R') || (s =='r')) res = SYMBOL_R;
+  else if ((s =='T') || (s =='t')) res = SYMBOL_T;
+  else if ((s =='U') || (s =='u')) res = SYMBOL_U;
+#endif
+  else if (s =='-') res = SYMBOL_DASH;
+  else if (s ==' ') res = SYMBOL_SPACE;
+  else res = SYMBOL_SPACE;
+
+  return res;
+}
+
+void DISP188_OutputText(const char* str)
+{
+  Digit_1 = (str[0] == '1') ? ConvertSymbol(str[0]) : DIGIT_EMPTY;
+  Digit_2 = ConvertSymbol(str[1]);
+  Digit_3 = ConvertSymbol(str[2]);
+}
+
+void DISP188_OutputNumber(const uint8_t num)
+{
+  if ((num >= 0) && (num <= 199))
+  {
+    Digit_1 = (num > 99) ? ConvertDigit(num / 100) : DIGIT_EMPTY;
+    Digit_2 = (num > 9)  ? ConvertDigit((num / 10) % 10) : DIGIT_EMPTY;
+    Digit_3 = ConvertDigit((num % 10));
+  }
+  else
+  {
+    Digit_1 = DIGIT_EMPTY;
+    Digit_2 = DIGIT_EMPTY;
+    Digit_3 = DIGIT_EMPTY;
+  }
+}
+
+void DISP188_Off()
+{
+  DISP188_OutputText("   ");
+  LL_GPIO_SetPinOutputType(DISP188_1_PORT, DISP188_1_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+  LL_GPIO_SetPinOutputType(DISP188_2_PORT, DISP188_2_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+  LL_GPIO_SetPinOutputType(DISP188_3_PORT, DISP188_3_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+  LL_GPIO_SetPinOutputType(DISP188_4_PORT, DISP188_4_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+  LL_GPIO_SetPinOutputType(DISP188_5_PORT, DISP188_5_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+  LL_GPIO_SetOutputPin(DISP188_1_PORT, DISP188_1_PIN);
+  LL_GPIO_SetOutputPin(DISP188_2_PORT, DISP188_2_PIN);
+  LL_GPIO_SetOutputPin(DISP188_3_PORT, DISP188_3_PIN);
+  LL_GPIO_SetOutputPin(DISP188_4_PORT, DISP188_4_PIN);
+  LL_GPIO_SetOutputPin(DISP188_5_PORT, DISP188_5_PIN);
+}
+
+void DISP188_Init()
+{
+  DISP188_Off();
+  LL_TIM_EnableIT_UPDATE(DISP188_TIMER);
+  LL_TIM_EnableCounter(DISP188_TIMER);
+}
+
+void DISP188_DeInit()
+{
+  DISP188_Off();
+  LL_TIM_DisableIT_UPDATE(DISP188_TIMER);
+  LL_TIM_DisableCounter(DISP188_TIMER);
+}
+
+#ifdef ECONOMY_CODE
+
+void DISP188_Update()
+{
+  LL_GPIO_SetPinOutputType(DISP188_1_PORT, DISP188_1_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+  LL_GPIO_SetPinOutputType(DISP188_2_PORT, DISP188_2_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+  LL_GPIO_SetPinOutputType(DISP188_3_PORT, DISP188_3_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+  LL_GPIO_SetPinOutputType(DISP188_4_PORT, DISP188_4_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+  LL_GPIO_SetPinOutputType(DISP188_5_PORT, DISP188_5_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+  LL_GPIO_SetOutputPin(DISP188_1_PORT, DISP188_1_PIN);
+  LL_GPIO_SetOutputPin(DISP188_2_PORT, DISP188_2_PIN);
+  LL_GPIO_SetOutputPin(DISP188_3_PORT, DISP188_3_PIN);
+  LL_GPIO_SetOutputPin(DISP188_4_PORT, DISP188_4_PIN);
+  LL_GPIO_SetOutputPin(DISP188_5_PORT, DISP188_5_PIN);
+
+  if (stage == 0)
+  {
+    if (Digit_2 & (1 << 1)) LL_GPIO_SetPinOutputType(DISP188_5_PORT, DISP188_5_PIN, LL_GPIO_OUTPUT_PUSHPULL); // G2
+    if (Digit_1 & (1 << 6)) LL_GPIO_SetPinOutputType(DISP188_3_PORT, DISP188_3_PIN, LL_GPIO_OUTPUT_PUSHPULL); // B1
+    if (Digit_1 & (1 << 5)) LL_GPIO_SetPinOutputType(DISP188_2_PORT, DISP188_2_PIN, LL_GPIO_OUTPUT_PUSHPULL); // C1
+    if (Digit_3 & (1 << 3)) LL_GPIO_SetPinOutputType(DISP188_1_PORT, DISP188_1_PIN, LL_GPIO_OUTPUT_PUSHPULL); // E3
+    LL_GPIO_ResetOutputPin(DISP188_4_PORT, DISP188_4_PIN);
+
+    stage++;
+  }
+  else if (stage == 1)
+  {
+    if (Digit_2 & (1 << 2)) LL_GPIO_SetPinOutputType(DISP188_5_PORT, DISP188_5_PIN, LL_GPIO_OUTPUT_PUSHPULL); // F2
+    if (Digit_2 & (1 << 5)) LL_GPIO_SetPinOutputType(DISP188_4_PORT, DISP188_4_PIN, LL_GPIO_OUTPUT_PUSHPULL); // C2
+    if (Digit_2 & (1 << 7)) LL_GPIO_SetPinOutputType(DISP188_2_PORT, DISP188_2_PIN, LL_GPIO_OUTPUT_PUSHPULL); // A2
+    if (Digit_3 & (1 << 5)) LL_GPIO_SetPinOutputType(DISP188_1_PORT, DISP188_1_PIN, LL_GPIO_OUTPUT_PUSHPULL); // C3
+    LL_GPIO_ResetOutputPin(DISP188_3_PORT, DISP188_3_PIN);
+
+    stage++;
+  }
+  else if (stage == 2)
+  {
+    if (Digit_2 & (1 << 3)) LL_GPIO_SetPinOutputType(DISP188_5_PORT, DISP188_5_PIN, LL_GPIO_OUTPUT_PUSHPULL); // E2
+    if (Digit_2 & (1 << 4)) LL_GPIO_SetPinOutputType(DISP188_4_PORT, DISP188_4_PIN, LL_GPIO_OUTPUT_PUSHPULL); // D2
+    if (Digit_2 & (1 << 6)) LL_GPIO_SetPinOutputType(DISP188_3_PORT, DISP188_3_PIN, LL_GPIO_OUTPUT_PUSHPULL); // B2
+    if (Digit_3 & (1 << 7)) LL_GPIO_SetPinOutputType(DISP188_1_PORT, DISP188_1_PIN, LL_GPIO_OUTPUT_PUSHPULL); // A3
+    LL_GPIO_ResetOutputPin(DISP188_2_PORT, DISP188_2_PIN);
+
+    stage++;
+  }
+  else // stage == 3
+  {
+    if (Digit_3 & (1 << 1)) LL_GPIO_SetPinOutputType(DISP188_5_PORT, DISP188_5_PIN, LL_GPIO_OUTPUT_PUSHPULL); // G3
+    if (Digit_3 & (1 << 2)) LL_GPIO_SetPinOutputType(DISP188_4_PORT, DISP188_4_PIN, LL_GPIO_OUTPUT_PUSHPULL); // F3
+    if (Digit_3 & (1 << 4)) LL_GPIO_SetPinOutputType(DISP188_3_PORT, DISP188_3_PIN, LL_GPIO_OUTPUT_PUSHPULL); // D3
+    if (Digit_3 & (1 << 6)) LL_GPIO_SetPinOutputType(DISP188_2_PORT, DISP188_2_PIN, LL_GPIO_OUTPUT_PUSHPULL); // B3
+    LL_GPIO_ResetOutputPin(DISP188_1_PORT, DISP188_1_PIN);
+
+    stage = 0;
+  }
+}
+
+#else
+
+void DISP188_OnSegment(uint8_t s)
+{
+  LL_GPIO_SetPinOutputType(DISP188_1_PORT, DISP188_1_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+  LL_GPIO_SetPinOutputType(DISP188_2_PORT, DISP188_2_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+  LL_GPIO_SetPinOutputType(DISP188_3_PORT, DISP188_3_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+  LL_GPIO_SetPinOutputType(DISP188_4_PORT, DISP188_4_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+  LL_GPIO_SetPinOutputType(DISP188_5_PORT, DISP188_5_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+  LL_GPIO_SetOutputPin(DISP188_1_PORT, DISP188_1_PIN);
+  LL_GPIO_SetOutputPin(DISP188_2_PORT, DISP188_2_PIN);
+  LL_GPIO_SetOutputPin(DISP188_3_PORT, DISP188_3_PIN);
+  LL_GPIO_SetOutputPin(DISP188_4_PORT, DISP188_4_PIN);
+  LL_GPIO_SetOutputPin(DISP188_5_PORT, DISP188_5_PIN);
+
+  // Digit 1
+  if (s == B1)
+  {
+    LL_GPIO_SetPinOutputType(DISP188_1_PORT, DISP188_1_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_1_PORT, DISP188_1_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_2_PORT, DISP188_2_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_2_PORT, DISP188_2_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_3_PORT, DISP188_3_PIN, LL_GPIO_OUTPUT_PUSHPULL);
+    LL_GPIO_SetOutputPin(DISP188_3_PORT, DISP188_3_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_4_PORT, DISP188_4_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_ResetOutputPin(DISP188_4_PORT, DISP188_4_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_5_PORT, DISP188_5_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_5_PORT, DISP188_5_PIN);
+  }
+  else if (s == C1)
+  {
+    LL_GPIO_SetPinOutputType(DISP188_1_PORT, DISP188_1_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_1_PORT, DISP188_1_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_2_PORT, DISP188_2_PIN, LL_GPIO_OUTPUT_PUSHPULL);
+    LL_GPIO_SetOutputPin(DISP188_2_PORT, DISP188_2_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_3_PORT, DISP188_3_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_3_PORT, DISP188_3_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_4_PORT, DISP188_4_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_ResetOutputPin(DISP188_4_PORT, DISP188_4_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_5_PORT, DISP188_5_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_5_PORT, DISP188_5_PIN);
+  }
+  // Digit 2
+  else if (s == A2)
+  {
+    LL_GPIO_SetPinOutputType(DISP188_1_PORT, DISP188_1_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_1_PORT, DISP188_1_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_2_PORT, DISP188_2_PIN, LL_GPIO_OUTPUT_PUSHPULL);
+    LL_GPIO_SetOutputPin(DISP188_2_PORT, DISP188_2_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_3_PORT, DISP188_3_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_ResetOutputPin(DISP188_3_PORT, DISP188_3_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_4_PORT, DISP188_4_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_4_PORT, DISP188_4_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_5_PORT, DISP188_5_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_5_PORT, DISP188_5_PIN);
+  }
+  else if (s == B2)
+  {
+    LL_GPIO_SetPinOutputType(DISP188_1_PORT, DISP188_1_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_1_PORT, DISP188_1_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_2_PORT, DISP188_2_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_ResetOutputPin(DISP188_2_PORT, DISP188_2_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_3_PORT, DISP188_3_PIN, LL_GPIO_OUTPUT_PUSHPULL);
+    LL_GPIO_SetOutputPin(DISP188_3_PORT, DISP188_3_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_4_PORT, DISP188_4_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_4_PORT, DISP188_4_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_5_PORT, DISP188_5_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_5_PORT, DISP188_5_PIN);
+  }
+  else if (s == C2)
+  {
+    LL_GPIO_SetPinOutputType(DISP188_1_PORT, DISP188_1_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_1_PORT, DISP188_1_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_2_PORT, DISP188_2_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_2_PORT, DISP188_2_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_3_PORT, DISP188_3_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_ResetOutputPin(DISP188_3_PORT, DISP188_3_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_4_PORT, DISP188_4_PIN, LL_GPIO_OUTPUT_PUSHPULL);
+    LL_GPIO_SetOutputPin(DISP188_4_PORT, DISP188_4_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_5_PORT, DISP188_5_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_5_PORT, DISP188_5_PIN);
+  }
+  else if (s == D2)
+  {
+    LL_GPIO_SetPinOutputType(DISP188_1_PORT, DISP188_1_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_1_PORT, DISP188_1_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_2_PORT, DISP188_2_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_ResetOutputPin(DISP188_2_PORT, DISP188_2_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_3_PORT, DISP188_3_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_3_PORT, DISP188_3_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_4_PORT, DISP188_4_PIN, LL_GPIO_OUTPUT_PUSHPULL);
+    LL_GPIO_SetOutputPin(DISP188_4_PORT, DISP188_4_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_5_PORT, DISP188_5_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_5_PORT, DISP188_5_PIN);
+  }
+  else if (s == E2)
+  {
+    LL_GPIO_SetPinOutputType(DISP188_1_PORT, DISP188_1_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_1_PORT, DISP188_1_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_2_PORT, DISP188_2_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_ResetOutputPin(DISP188_2_PORT, DISP188_2_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_3_PORT, DISP188_3_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_3_PORT, DISP188_3_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_4_PORT, DISP188_4_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_4_PORT, DISP188_4_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_5_PORT, DISP188_5_PIN, LL_GPIO_OUTPUT_PUSHPULL);
+    LL_GPIO_SetOutputPin(DISP188_5_PORT, DISP188_5_PIN);
+  }
+  else if (s == F2)
+  {
+    LL_GPIO_SetPinOutputType(DISP188_1_PORT, DISP188_1_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_1_PORT, DISP188_1_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_2_PORT, DISP188_2_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_2_PORT, DISP188_2_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_3_PORT, DISP188_3_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_ResetOutputPin(DISP188_3_PORT, DISP188_3_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_4_PORT, DISP188_4_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_4_PORT, DISP188_4_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_5_PORT, DISP188_5_PIN, LL_GPIO_OUTPUT_PUSHPULL);
+    LL_GPIO_SetOutputPin(DISP188_5_PORT, DISP188_5_PIN);
+  }
+  else if (s == G2)
+  {
+    LL_GPIO_SetPinOutputType(DISP188_1_PORT, DISP188_1_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_1_PORT, DISP188_1_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_2_PORT, DISP188_2_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_2_PORT, DISP188_2_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_3_PORT, DISP188_3_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_3_PORT, DISP188_3_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_4_PORT, DISP188_4_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_ResetOutputPin(DISP188_4_PORT, DISP188_4_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_5_PORT, DISP188_5_PIN, LL_GPIO_OUTPUT_PUSHPULL);
+    LL_GPIO_SetOutputPin(DISP188_5_PORT, DISP188_5_PIN);
+  }
+  // Digit 3
+  else if (s == A3)
+  {
+    LL_GPIO_SetPinOutputType(DISP188_1_PORT, DISP188_1_PIN, LL_GPIO_OUTPUT_PUSHPULL);
+    LL_GPIO_SetOutputPin(DISP188_1_PORT, DISP188_1_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_2_PORT, DISP188_2_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_ResetOutputPin(DISP188_2_PORT, DISP188_2_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_3_PORT, DISP188_3_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_3_PORT, DISP188_3_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_4_PORT, DISP188_4_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_4_PORT, DISP188_4_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_5_PORT, DISP188_5_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_5_PORT, DISP188_5_PIN);
+  }
+  else if (s == B3)
+  {
+    LL_GPIO_SetPinOutputType(DISP188_1_PORT, DISP188_1_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_ResetOutputPin(DISP188_1_PORT, DISP188_1_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_2_PORT, DISP188_2_PIN, LL_GPIO_OUTPUT_PUSHPULL);
+    LL_GPIO_SetOutputPin(DISP188_2_PORT, DISP188_2_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_3_PORT, DISP188_3_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_3_PORT, DISP188_3_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_4_PORT, DISP188_4_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_4_PORT, DISP188_4_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_5_PORT, DISP188_5_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_5_PORT, DISP188_5_PIN);
+  }
+  else if (s == C3)
+  {
+    LL_GPIO_SetPinOutputType(DISP188_1_PORT, DISP188_1_PIN, LL_GPIO_OUTPUT_PUSHPULL);
+    LL_GPIO_SetOutputPin(DISP188_1_PORT, DISP188_1_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_2_PORT, DISP188_2_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_2_PORT, DISP188_2_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_3_PORT, DISP188_3_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_ResetOutputPin(DISP188_3_PORT, DISP188_3_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_4_PORT, DISP188_4_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_4_PORT, DISP188_4_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_5_PORT, DISP188_5_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_5_PORT, DISP188_5_PIN);
+  }
+  else if (s == D3)
+  {
+    LL_GPIO_SetPinOutputType(DISP188_1_PORT, DISP188_1_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_ResetOutputPin(DISP188_1_PORT, DISP188_1_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_2_PORT, DISP188_2_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_2_PORT, DISP188_2_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_3_PORT, DISP188_3_PIN, LL_GPIO_OUTPUT_PUSHPULL);
+    LL_GPIO_SetOutputPin(DISP188_3_PORT, DISP188_3_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_4_PORT, DISP188_4_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_4_PORT, DISP188_4_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_5_PORT, DISP188_5_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_5_PORT, DISP188_5_PIN);
+  }
+  else if (s == E3)
+  {
+    LL_GPIO_SetPinOutputType(DISP188_1_PORT, DISP188_1_PIN, LL_GPIO_OUTPUT_PUSHPULL);
+    LL_GPIO_SetOutputPin(DISP188_1_PORT, DISP188_1_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_2_PORT, DISP188_2_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_2_PORT, DISP188_2_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_3_PORT, DISP188_3_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_3_PORT, DISP188_3_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_4_PORT, DISP188_4_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_ResetOutputPin(DISP188_4_PORT, DISP188_4_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_5_PORT, DISP188_5_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_5_PORT, DISP188_5_PIN);
+  }
+  else if (s == F3)
+  {
+    LL_GPIO_SetPinOutputType(DISP188_1_PORT, DISP188_1_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_ResetOutputPin(DISP188_1_PORT, DISP188_1_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_2_PORT, DISP188_2_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_2_PORT, DISP188_2_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_3_PORT, DISP188_3_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_3_PORT, DISP188_3_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_4_PORT, DISP188_4_PIN, LL_GPIO_OUTPUT_PUSHPULL);
+    LL_GPIO_SetOutputPin(DISP188_4_PORT, DISP188_4_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_5_PORT, DISP188_5_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_5_PORT, DISP188_5_PIN);
+  }
+  else if (s == G3)
+  {
+    LL_GPIO_SetPinOutputType(DISP188_1_PORT, DISP188_1_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_ResetOutputPin(DISP188_1_PORT, DISP188_1_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_2_PORT, DISP188_2_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_2_PORT, DISP188_2_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_3_PORT, DISP188_3_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_3_PORT, DISP188_3_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_4_PORT, DISP188_4_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+    LL_GPIO_SetOutputPin(DISP188_4_PORT, DISP188_4_PIN);
+    LL_GPIO_SetPinOutputType(DISP188_5_PORT, DISP188_5_PIN, LL_GPIO_OUTPUT_PUSHPULL);
+    LL_GPIO_SetOutputPin(DISP188_5_PORT, DISP188_5_PIN);
+  }
+  else
+  {
+    DISP188_Off();
+  }
+}
+
+void DISP188_OffAllSegments()
+{
+  LL_GPIO_SetPinOutputType(DISP188_1_PORT, DISP188_1_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+  LL_GPIO_SetOutputPin(DISP188_1_PORT, DISP188_1_PIN);
+  LL_GPIO_SetPinOutputType(DISP188_2_PORT, DISP188_2_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+  LL_GPIO_SetOutputPin(DISP188_2_PORT, DISP188_2_PIN);
+  LL_GPIO_SetPinOutputType(DISP188_3_PORT, DISP188_3_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+  LL_GPIO_SetOutputPin(DISP188_3_PORT, DISP188_3_PIN);
+  LL_GPIO_SetPinOutputType(DISP188_4_PORT, DISP188_4_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+  LL_GPIO_ResetOutputPin(DISP188_4_PORT, DISP188_4_PIN);
+  LL_GPIO_SetPinOutputType(DISP188_5_PORT, DISP188_5_PIN, LL_GPIO_OUTPUT_OPENDRAIN);
+  LL_GPIO_SetOutputPin(DISP188_5_PORT, DISP188_5_PIN);
+}
+
+void DISP188_Update()
+{
+  if      (stage ==  0) (Digit_1 & (1 << 6)) ? DISP188_OnSegment(B1) : DISP188_OffAllSegments();
+  else if (stage ==  1) (Digit_1 & (1 << 5)) ? DISP188_OnSegment(C1) : DISP188_OffAllSegments();
+
+  else if (stage ==  2) (Digit_2 & (1 << 7)) ? DISP188_OnSegment(A2) : DISP188_OffAllSegments();
+  else if (stage ==  3) (Digit_2 & (1 << 6)) ? DISP188_OnSegment(B2) : DISP188_OffAllSegments();
+  else if (stage ==  4) (Digit_2 & (1 << 5)) ? DISP188_OnSegment(C2) : DISP188_OffAllSegments();
+  else if (stage ==  5) (Digit_2 & (1 << 4)) ? DISP188_OnSegment(D2) : DISP188_OffAllSegments();
+  else if (stage ==  6) (Digit_2 & (1 << 3)) ? DISP188_OnSegment(E2) : DISP188_OffAllSegments();
+  else if (stage ==  7) (Digit_2 & (1 << 2)) ? DISP188_OnSegment(F2) : DISP188_OffAllSegments();
+  else if (stage ==  8) (Digit_2 & (1 << 1)) ? DISP188_OnSegment(G2) : DISP188_OffAllSegments();
+
+  else if (stage ==  9) (Digit_3 & (1 << 7)) ? DISP188_OnSegment(A3) : DISP188_OffAllSegments();
+  else if (stage == 10) (Digit_3 & (1 << 6)) ? DISP188_OnSegment(B3) : DISP188_OffAllSegments();
+  else if (stage == 11) (Digit_3 & (1 << 5)) ? DISP188_OnSegment(C3) : DISP188_OffAllSegments();
+  else if (stage == 12) (Digit_3 & (1 << 4)) ? DISP188_OnSegment(D3) : DISP188_OffAllSegments();
+  else if (stage == 13) (Digit_3 & (1 << 3)) ? DISP188_OnSegment(E3) : DISP188_OffAllSegments();
+  else if (stage == 14) (Digit_3 & (1 << 2)) ? DISP188_OnSegment(F3) : DISP188_OffAllSegments();
+  else if (stage == 15) (Digit_3 & (1 << 1)) ? DISP188_OnSegment(G3) : DISP188_OffAllSegments();
+  else DISP188_Off();
+
+  if (stage < 15) stage++;
+  else stage = 0;
+}
+
+#endif
